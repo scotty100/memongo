@@ -34,6 +34,14 @@ func Start(version string) (*Server, error) {
 	})
 }
 
+func StartReplicaSet(version string) (*Server, error) {
+
+	return  StartWithOptions(&Options{
+		MongoVersion: version,
+		MongodOptions: ", --replSet rs0",
+	})
+}
+
 // StartWithOptions is like Start(), but accepts options.
 func StartWithOptions(opts *Options) (*Server, error) {
 	err := opts.fillDefaults()
@@ -62,7 +70,7 @@ func StartWithOptions(opts *Options) (*Server, error) {
 
 	//  Safe to pass binPath and dbDir
 	//nolint:gosec
-	cmd := exec.Command(binPath, "--storageEngine", "ephemeralForTest", "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port))
+	cmd := exec.Command(binPath, "--storageEngine", "ephemeralForTest", "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port), opts.MongodOptions )
 
 	stdoutHandler, startupErrCh, startupPortCh := stdoutHandler(logger)
 	cmd.Stdout = stdoutHandler
