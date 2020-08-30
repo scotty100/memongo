@@ -34,13 +34,6 @@ func Start(version string) (*Server, error) {
 	})
 }
 
-func StartReplicaSet(version string) (*Server, error) {
-
-	return  StartWithOptions(&Options{
-		MongoVersion: version,
-		MongodOptions: ", --replSet rs0",
-	})
-}
 
 // StartWithOptions is like Start(), but accepts options.
 func StartWithOptions(opts *Options) (*Server, error) {
