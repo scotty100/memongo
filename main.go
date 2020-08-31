@@ -35,6 +35,9 @@ type Server struct {
 func Start(version string) (*Server, error) {
 	return StartWithOptions(&Options{
 		MongoVersion: version,
+		MongodOptions: map[string]string{
+			"--storageEngine": "ephemeralForTest",
+		},
 	})
 }
 
@@ -42,8 +45,10 @@ func StartReplicaSet(version string)(*Server, error) {
 	server, err := StartWithOptions(&Options{
 		MongoVersion: version,
 		MongodOptions: map[string]string{
+			"--storageEngine": "wiredTiger",
 			"--replSet": "rs0",
 		},
+		LogLevel:     memongolog.LogLevelDebug,
 	})
 	if err != nil {
 		return nil, err
@@ -100,7 +105,7 @@ func StartWithOptions(opts *Options) (*Server, error) {
 
 	//  Safe to pass binPath and dbDir
 	//nolint:gosec
-	inputArr := []string{"--storageEngine", "ephemeralForTest", "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port)}
+	inputArr := []string{ "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port)}
 	for k,v := range opts.MongodOptions {
 		inputArr = append(inputArr, k)
 		inputArr = append(inputArr, v)
