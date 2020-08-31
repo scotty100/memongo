@@ -48,7 +48,7 @@ type Options struct {
 	StartupTimeout time.Duration
 
 	// and additional mongod instance startup flags
-	MongodOptions string
+	MongodOptions map[string]string
 }
 
 func (opts *Options) fillDefaults() error {

@@ -2,8 +2,12 @@ package memongo
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"io/ioutil"
 	"os"
@@ -34,6 +38,39 @@ func Start(version string) (*Server, error) {
 	})
 }
 
+func StartReplicaSet(version string)(*Server, error) {
+	server, err := StartWithOptions(&Options{
+		MongoVersion: version,
+		MongodOptions: map[string]string{
+			"--replSet": "rs0",
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	opts := options.Client().ApplyURI(server.URI())
+	opts.Direct = &[]bool{true}[0]
+	client, err := mongo.Connect(context.Background(), opts)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Disconnect(context.Background())
+
+	config := bson.M{
+		"_id": "rs0",
+		"members": []bson.M{
+			{"_id": 0, "host": fmt.Sprintf("localhost:%v", server.port)},
+		},
+	}
+
+	res := client.Database("admin").RunCommand(context.Background(), bson.M{"replSetInitiate": config})
+	if res.Err() != nil {
+		return nil,  res.Err()
+	}
+
+	return server, nil
+}
 
 // StartWithOptions is like Start(), but accepts options.
 func StartWithOptions(opts *Options) (*Server, error) {
@@ -63,8 +100,13 @@ func StartWithOptions(opts *Options) (*Server, error) {
 
 	//  Safe to pass binPath and dbDir
 	//nolint:gosec
-	cmd := exec.Command(binPath, "--storageEngine", "ephemeralForTest", "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port), opts.MongodOptions )
+	inputArr := []string{"--storageEngine", "ephemeralForTest", "--dbpath", dbDir, "--port", strconv.Itoa(opts.Port)}
+	for k,v := range opts.MongodOptions {
+		inputArr = append(inputArr, k)
+		inputArr = append(inputArr, v)
+	}
 
+	cmd := exec.Command(binPath, inputArr...)
 	stdoutHandler, startupErrCh, startupPortCh := stdoutHandler(logger)
 	cmd.Stdout = stdoutHandler
 	cmd.Stderr = stderrHandler(logger)
